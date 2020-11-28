@@ -8,6 +8,9 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.util.Log
+import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.FlutterPlugin.FlutterPluginBinding
+import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
@@ -264,24 +267,27 @@ class AesStringEncryptor// get the key, which is encrypted by RSA cipher.
     }
 }
 
-class FlutterKeychainPlugin : MethodCallHandler {
-
+class FlutterKeychainPlugin : MethodCallHandler, FlutterPlugin {
     companion object {
-        lateinit private var encryptor: StringEncryptor
-        lateinit private var preferences: SharedPreferences
+        private lateinit var encryptor: StringEncryptor
+        private lateinit var preferences: SharedPreferences
+    }
 
-        @JvmStatic
-        fun registerWith(registrar: Registrar): Unit {
+    override fun onAttachedToEngine(binding: FlutterPluginBinding) {
+        onAttachedToEngine(binding.applicationContext, binding.binaryMessenger)
+    }
 
-            try {
-                preferences = registrar.context().getSharedPreferences("FlutterKeychain", Context.MODE_PRIVATE)
-                encryptor = AesStringEncryptor(preferences = preferences, keyWrapper = RsaKeyStoreKeyWrapper(registrar.context()))
+    override fun onDetachedFromEngine(binding: FlutterPluginBinding) {}
 
-                val channel = MethodChannel(registrar.messenger(), "plugin.appmire.be/flutter_keychain")
-                channel.setMethodCallHandler(FlutterKeychainPlugin())
-            } catch (e: Exception) {
-                Log.e("flutter_keychain", "Could not register plugin", e)
-            }
+    private fun onAttachedToEngine(context: Context, messenger: BinaryMessenger) {
+        try {
+            preferences = context.getSharedPreferences("FlutterKeychain", Context.MODE_PRIVATE);
+            encryptor = AesStringEncryptor(preferences = preferences, keyWrapper = RsaKeyStoreKeyWrapper(context));
+
+            val channel = MethodChannel(messenger, "plugin.appmire.be/flutter_keychain")
+            channel.setMethodCallHandler(FlutterKeychainPlugin())
+        } catch (e: Exception) {
+            Log.e("flutter_keychain", "Could not register plugin", e)
         }
     }
 
